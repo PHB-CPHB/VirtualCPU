@@ -87,8 +87,9 @@ public class Machine {
             //Undefined
         } else if (instr == 0b0000_1111) {
             System.out.println("HALT");
+            System.exit(0);
             // 0000 1111
-        } else if ((instr & 0b0001_0000) == 0b0001_0000) {
+        } else if ((instr & 0b1111_1110) == 0b0001_0000) {
             System.out.println("PUSH r");
             // 0001 000r
             int r = (instr & 0b0000_0001);
@@ -99,27 +100,43 @@ public class Machine {
                 memory.set(cpu.getSp(), cpu.getB());
             }
             cpu.setIp(cpu.getIp() + 1);
-        } else if ((instr & 0b0001_0010) == 0b0001_0010) {
+        } else if ((instr & 0b1111_1110) == 0b0001_0010) {
             System.out.println("POP r");
             // 0001 001r
-            int r = (instr & 0b0000_0010);
+            int r = (instr & 0b0000_0001);
             if (r == cpu.A) {
                 cpu.setA(memory.get(cpu.getSp()));
             } else {
                 cpu.setB(memory.get(cpu.getSp()));
             }
             cpu.incSp();
-            cpu.setIp(cpu.getIp() + 1);
+            cpu.incIp();
         } else if (instr == 0b0001_0100) {
             System.out.println("MOV A B");
+            // 0001 0100
+            cpu.setB(cpu.getA());
+            cpu.setIp(cpu.getIp() + 1);
         } else if (instr == 0b0001_0101) {
             System.out.println("MOV B A");
+            // 0001 0101
+            cpu.setA(cpu.getB());
+            cpu.setIp(cpu.getIp() + 1);
         } else if (instr == 0b0001_0110) {
             System.out.println("INC");
+            // 0001 0110
+            cpu.setA(cpu.getA() + 1);
+            cpu.setIp(cpu.getIp() + 1);
         } else if (instr == 0b0001_0111) {
             System.out.println("DEC");
-        } else if ((instr & 0b0001_1000) == 0b0001_1000) {
+            // 0001 0111
+            cpu.setA(cpu.getA() - 1);
+            cpu.setIp(cpu.getIp() + 1);
+        } else if ((instr & 0b1111_1000) == 0b0001_1000) {
             System.out.println("RTN +o");
+            // 0001 1ooo
+            int o = instr & 0b0000_0111;
+            cpu.setIp(memory.get(cpu.getSp()) + 1);
+            cpu.setSp(cpu.getSp() + o + 1);
         } else if ((instr & 0b1111_0000) == 0b0010_0000) {
             System.out.println("MOV r o");
             // 0010 rooo
@@ -151,6 +168,52 @@ public class Machine {
             // 00001000 = 8
             //    >> 3
             // 00000001 = 1
+        } else if ((instr & 0b1111_0000) == 0b0011_0000) {
+            System.out.println("MOV o r");
+            // 0011 ooor
+            int r = (instr & 0b0000_0001);
+            int o = (instr & 0b0000_1110) >> 1;
+            if (r == cpu.A){
+                cpu.setA(memory.get(cpu.getSp() + o));
+            } else {
+                cpu.setB(memory.get(cpu.getSp() + o));
+            }
+            cpu.setIp(cpu.getIp() + 1);
+        } else if ((instr & 0b1100_0000) == 0b0100_0000) {
+            System.out.println("MOV v r");
+            //01vv vvvr
+            int v = (instr & 0b0011_1110) >> 1;
+            if(((instr & 0b0010_0000)) == 0b0010_0000) {
+                v = -((instr & 0b0001_1110) >> 1);
+            }
+            int r = (instr & 0b0000_0001);
+            if (r == cpu.A){
+                cpu.setA(v);
+            } else {
+                cpu.setB(v);
+            }
+            cpu.setIp(cpu.getIp() + 1);
+        } else if ((instr & 0b1100_0000) == 0b1000_0000) {
+            System.out.println("JMP #a");
+            // 10aa aaaa
+            if (cpu.isFlag()){
+                int a = (instr & 0b0011_1111);
+                cpu.setIp(a);
+            } else {
+                cpu.setIp(cpu.getIp() + 1);
+            }
+        } else if ((instr & 0b1100_0000) == 0b1100_0000) {
+            System.out.println("CALL #a");
+            // 11aa aaaa
+            int a = (instr & 0b0011_1111);
+            if (cpu.isFlag()){
+                cpu.decSp();
+                memory.set(cpu.getSp(), cpu.getIp());
+                cpu.setIp(a);
+            } else {
+                cpu.setIp(cpu.getIp() + 1);
+            }
+            
         }
     }
 
@@ -159,5 +222,8 @@ public class Machine {
         out.println("-------------");
         cpu.print(out);
     }
+    //    0  0  0  1  1 1 0 
+    //    64 32 16 8  4 2 1 
+    //    0  0  0  1  o o o 
 
 }
